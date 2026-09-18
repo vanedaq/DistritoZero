@@ -1,0 +1,1612 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Distrito Zero</title>
+<meta name="description" content="Calculadora de negocio para Distrito Zero: costos, precios, márgenes, punto de equilibrio e inventario conectado a Supabase.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#0a0912;
+    --bg-2:#0e0c18;
+    --surface:#161320;
+    --surface-2:#1d1929;
+    --surface-3:#262034;
+    --border:#332c45;
+    --border-soft:#241f31;
+    --text:#f3f0fa;
+    --text-dim:#b3a9c9;
+    --text-faint:#786e93;
+    --gold:#f2b84b;
+    --gold-soft:#3a2f1f;
+    --violet:#9d84ff;
+    --violet-soft:#251f3d;
+    --good:#3fcf8e;
+    --good-soft:#173229;
+    --warn:#f2b84b;
+    --warn-soft:#3a2f1f;
+    --danger:#ff6b7f;
+    --danger-soft:#3a1e26;
+    --radius-s:10px;
+    --radius-m:16px;
+    --radius-l:22px;
+    --font-display:'Unbounded', ui-sans-serif, system-ui, sans-serif;
+    --font-body:'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --font-mono:'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+    color-scheme: dark;
+  }
+  *{box-sizing:border-box;}
+  [x-cloak]{display:none!important;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(900px 500px at 100% -10%, rgba(157,132,255,0.14), transparent 60%),
+      radial-gradient(700px 420px at -10% 10%, rgba(242,184,75,0.10), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{ font-family:var(--font-display); text-wrap:balance; letter-spacing:0.01em; }
+  .mono{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  a{ color:var(--violet); }
+  button{ font-family:inherit; }
+  ::selection{ background:var(--violet); color:#0a0912; }
+  :focus-visible{ outline:2px solid var(--violet); outline-offset:2px; border-radius:6px; }
+
+  /* ---------- shell ---------- */
+  .shell{
+    max-width:1180px;
+    margin:0 auto;
+    padding-inline:16px;
+    padding-block: calc(env(safe-area-inset-top,0px) + 0px) 48px;
+    display:flex;
+    gap:24px;
+    align-items:flex-start;
+  }
+  .topbar{
+    position:sticky; top:0; z-index:30;
+    padding: calc(env(safe-area-inset-top,0px) + 12px) 16px 12px;
+    display:flex; align-items:center; gap:12px;
+    background:linear-gradient(180deg, rgba(10,9,18,0.97), rgba(10,9,18,0.88) 70%, transparent);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border-soft);
+  }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand .mark{
+    width:34px; height:34px; border-radius:9px;
+    background:linear-gradient(155deg, var(--gold), var(--violet));
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-weight:800; font-size:15px; color:#0a0912;
+    flex:none;
+  }
+  .brand .name{ font-family:var(--font-display); font-weight:700; font-size:16px; letter-spacing:0.03em; }
+  .brand .tag{ font-size:11px; color:var(--text-faint); letter-spacing:0.04em; }
+  .topbar .spacer{ flex:1; }
+  .conn-pill{
+    display:flex; align-items:center; gap:7px;
+    font-size:12px; color:var(--text-dim);
+    padding:7px 11px; border-radius:999px; border:1px solid var(--border);
+    background:var(--surface); cursor:pointer;
+  }
+  .conn-pill .dot{ width:7px; height:7px; border-radius:50%; background:var(--danger); flex:none; }
+  .conn-pill.on .dot{ background:var(--good); }
+  .menu-btn{
+    display:none; align-items:center; justify-content:center;
+    width:38px; height:38px; border-radius:10px;
+    background:var(--surface); border:1px solid var(--border); color:var(--text);
+    cursor:pointer;
+  }
+
+  /* ---------- nav ---------- */
+  .nav{
+    position:sticky; top:78px;
+    width:216px; flex:none;
+    display:flex; flex-direction:column; gap:3px;
+    padding-block:6px;
+  }
+  .nav button{
+    display:flex; align-items:center; gap:10px;
+    text-align:left; width:100%;
+    padding:10px 12px; border-radius:var(--radius-s);
+    background:transparent; border:1px solid transparent; color:var(--text-dim);
+    font-size:13.5px; font-weight:500; cursor:pointer;
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav button .idx{ font-family:var(--font-mono); font-size:11px; color:var(--text-faint); width:16px; flex:none; }
+  .nav button:hover{ background:var(--surface); color:var(--text); }
+  .nav button.active{ background:var(--surface-2); border-color:var(--border); color:var(--text); }
+  .nav button.active .idx{ color:var(--gold); }
+
+  .drawer-overlay{
+    position:fixed; inset:0; z-index:40;
+    background:rgba(6,5,11,0.7); backdrop-filter:blur(2px);
+  }
+  .drawer{
+    position:fixed; inset:0 18% 0 0; z-index:41;
+    background:var(--bg-2); border-right:1px solid var(--border);
+    padding: calc(env(safe-area-inset-top,0px) + 18px) 16px 18px;
+    display:flex; flex-direction:column; gap:16px;
+    overflow-y:auto;
+  }
+  .drawer .nav{ position:static; width:auto; top:auto; }
+  .drawer .nav button{ padding:13px 12px; font-size:14.5px; }
+
+  main{ flex:1; min-width:0; padding-top:6px; }
+
+  /* ---------- sections & cards ---------- */
+  .module{ display:flex; flex-direction:column; gap:18px; }
+  .module-head{ display:flex; flex-direction:column; gap:4px; margin-bottom:2px; }
+  .eyebrow{ font-family:var(--font-mono); font-size:11px; color:var(--gold); letter-spacing:0.08em; text-transform:uppercase; }
+  .module-head h1{ font-size:22px; margin:0; }
+  .module-head p{ margin:0; color:var(--text-dim); font-size:13.5px; max-width:56ch; }
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border-soft);
+    border-radius:var(--radius-l);
+    padding:18px;
+  }
+  .card-title{ font-size:12.5px; font-weight:600; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.05em; margin:0 0 12px; }
+
+  .results-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:10px; }
+  .stat{
+    background:var(--surface-2); border:1px solid var(--border-soft);
+    border-radius:var(--radius-m); padding:13px 14px;
+    display:flex; flex-direction:column; gap:5px;
+  }
+  .stat.lead{ background:linear-gradient(160deg, var(--violet-soft), var(--surface-2)); border-color:var(--border); }
+  .stat .k{ font-size:11.5px; color:var(--text-dim); }
+  .stat .v{ font-family:var(--font-mono); font-size:21px; font-weight:600; letter-spacing:-0.01em; }
+  .stat .v.small{ font-size:17px; }
+  .stat .sub{ font-size:11px; color:var(--text-faint); }
+  .stat .v.gold{ color:var(--gold); }
+  .stat .v.violet{ color:var(--violet); }
+  .stat .v.good{ color:var(--good); }
+  .stat .v.danger{ color:var(--danger); }
+
+  form{ display:flex; flex-direction:column; gap:14px; }
+  .row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:12px; }
+  .field{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .field label{ font-size:12px; color:var(--text-dim); font-weight:500; }
+  .field .hint{ font-size:11px; color:var(--text-faint); }
+  .input, select.input, textarea.input{
+    background:var(--surface-2); border:1px solid var(--border);
+    color:var(--text); border-radius:var(--radius-s);
+    padding:10px 11px; font-size:14.5px; font-family:var(--font-mono);
+    width:100%;
+  }
+  .field label + .input, .field label + select.input{ font-family:var(--font-mono); }
+  select.input{ font-family:var(--font-body); }
+  textarea.input{ font-family:var(--font-body); resize:vertical; min-height:60px; }
+  .input:focus, select.input:focus, textarea.input:focus{ border-color:var(--violet); }
+  .input::placeholder{ color:var(--text-faint); }
+
+  .seg{ display:flex; border:1px solid var(--border); border-radius:var(--radius-s); overflow:hidden; width:fit-content; }
+  .seg button{
+    background:var(--surface-2); border:none; color:var(--text-dim);
+    padding:8px 13px; font-size:12.5px; cursor:pointer; font-weight:500;
+  }
+  .seg button.active{ background:var(--violet); color:#0a0912; }
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:7px;
+    padding:11px 18px; border-radius:999px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--text); font-size:13.5px; font-weight:600;
+    cursor:pointer; white-space:nowrap;
+  }
+  .btn:disabled{ opacity:0.45; cursor:not-allowed; }
+  .btn-primary{ background:linear-gradient(140deg, var(--gold), #d99b2b); color:#211605; border-color:transparent; }
+  .btn-violet{ background:var(--violet); color:#140f28; border-color:transparent; }
+  .btn-ghost{ background:transparent; }
+  .btn-danger{ background:var(--danger-soft); color:var(--danger); border-color:transparent; }
+  .btn-sm{ padding:7px 13px; font-size:12.5px; border-radius:999px; }
+  .btn-icon{ width:34px; height:34px; padding:0; border-radius:9px; flex:none; }
+  .actions{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+
+  .banner{ display:flex; gap:10px; align-items:flex-start; padding:12px 14px; border-radius:var(--radius-m); font-size:13px; }
+  .banner.warn{ background:var(--warn-soft); color:#f6d190; border:1px solid rgba(242,184,75,0.3); }
+  .banner.info{ background:var(--violet-soft); color:#cabfff; border:1px solid rgba(157,132,255,0.3); }
+  .banner.good{ background:var(--good-soft); color:#8fe9c2; border:1px solid rgba(63,207,142,0.3); }
+  .banner.danger{ background:var(--danger-soft); color:#ffb2bd; border:1px solid rgba(255,107,127,0.3); }
+
+  .note{
+    font-size:12px; color:var(--text-faint); border-top:1px dashed var(--border);
+    padding-top:12px; margin-top:2px;
+  }
+
+  .explain{ display:flex; flex-direction:column; gap:10px; }
+  .explain p{ margin:0; color:var(--text-dim); font-size:13.5px; }
+  .explain b{ color:var(--text); }
+
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th{ text-align:left; font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.04em; font-weight:600; padding:0 10px 8px; }
+  td{ padding:10px; border-top:1px solid var(--border-soft); vertical-align:middle; }
+  td.num, th.num{ text-align:right; font-family:var(--font-mono); }
+  tr:hover td{ background:var(--surface-2); }
+  .table-wrap{ overflow-x:auto; border-radius:var(--radius-m); border:1px solid var(--border-soft); }
+  .table-wrap table{ min-width:640px; }
+  .empty-row td{ color:var(--text-faint); text-align:center; padding:26px 10px; }
+
+  .badge{ display:inline-flex; align-items:center; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:600; }
+  .badge.good{ background:var(--good-soft); color:var(--good); }
+  .badge.warn{ background:var(--warn-soft); color:var(--gold); }
+  .badge.danger{ background:var(--danger-soft); color:var(--danger); }
+  .badge.dim{ background:var(--surface-3); color:var(--text-dim); }
+
+  .accordion-item{ border:1px solid var(--border-soft); border-radius:var(--radius-m); overflow:hidden; background:var(--surface); }
+  .accordion-item summary{
+    list-style:none; cursor:pointer; padding:14px 16px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    font-weight:600; font-size:14px;
+  }
+  .accordion-item summary::-webkit-details-marker{ display:none; }
+  .accordion-item summary .plus{ font-family:var(--font-mono); color:var(--gold); flex:none; transition:transform .15s; }
+  .accordion-item[open] summary .plus{ transform:rotate(45deg); }
+  .accordion-item .body{ padding:0 16px 16px; color:var(--text-dim); font-size:13.5px; }
+  .accordion-item .body .ex{
+    margin-top:10px; background:var(--surface-2); border-radius:var(--radius-s);
+    padding:10px 12px; font-size:12.5px; border-left:2px solid var(--gold);
+  }
+
+  .flow{ display:flex; flex-direction:column; gap:0; }
+  .flow-step{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    background:var(--surface-2); border:1px solid var(--border-soft);
+    border-radius:var(--radius-s); padding:11px 14px;
+  }
+  .flow-step .lbl{ font-size:13px; font-weight:500; }
+  .flow-step .val{ font-family:var(--font-mono); font-size:14px; }
+  .flow-arrow{ display:flex; justify-content:center; padding:3px 0; color:var(--text-faint); font-size:13px; }
+  .flow-step.total{ border-color:var(--gold); background:var(--gold-soft); }
+  .flow-step.total .val{ color:var(--gold); font-weight:600; }
+  .flow-step.neg .val{ color:var(--danger); }
+
+  .cap-bar{ height:8px; border-radius:999px; background:var(--surface-3); overflow:hidden; display:flex; }
+  .cap-bar .seg-fill{ height:100%; }
+
+  .scen-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); gap:14px; }
+  .scen-card{ display:flex; flex-direction:column; gap:12px; }
+  .scen-card h3{ margin:0; font-size:14.5px; }
+
+  .code-box{
+    background:#08070d; border:1px solid var(--border-soft); border-radius:var(--radius-m);
+    padding:14px; max-height:280px; overflow:auto;
+  }
+  .code-box pre{ margin:0; font-family:var(--font-mono); font-size:11.5px; line-height:1.6; color:#c9c1e0; white-space:pre; }
+
+  .steps{ display:flex; flex-direction:column; gap:10px; counter-reset:step; }
+  .steps li{ list-style:none; display:flex; gap:11px; }
+  .steps li::before{
+    counter-increment:step; content:counter(step);
+    font-family:var(--font-mono); font-size:11px; font-weight:600; color:#0a0912;
+    background:var(--gold); width:20px; height:20px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; flex:none; margin-top:1px;
+  }
+  .steps{ padding:0; margin:0; }
+  .steps p{ margin:0 0 3px; font-size:13.5px; }
+  .steps span{ font-size:12px; color:var(--text-faint); }
+
+  footer.foot{ text-align:center; color:var(--text-faint); font-size:11.5px; padding-top:26px; }
+
+  @media (max-width:860px){
+    .nav{ display:none; }
+    .menu-btn{ display:flex; }
+    .shell{ padding-inline:14px; }
+  }
+  @media (min-width:861px){
+    .menu-btn{ display:none; }
+  }
+</style>
+
+
+</head>
+<body>
+<div x-data="appData()" x-init="init()" x-cloak>
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark">DZ</div>
+      <div>
+        <div class="name">DISTRITO ZERO</div>
+        <div class="tag">Calculadora de negocio</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <button class="conn-pill" :class="connected && 'on'" @click="showConnPanel = true">
+      <span class="dot"></span>
+      <span x-text="connected ? 'Conectado' : 'Sin conectar'"></span>
+    </button>
+    <button class="menu-btn" @click="navOpen = true" aria-label="Abrir menú">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 4.5H16M2 9H16M2 13.5H16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+
+  <div class="shell">
+    <nav class="nav">
+      <template x-for="(m, i) in modules" :key="m.id">
+        <button :class="view === m.id && 'active'" @click="view = m.id">
+          <span class="idx" x-text="String(i).padStart(2,'0')"></span>
+          <span x-text="m.label"></span>
+        </button>
+      </template>
+    </nav>
+
+    <div class="drawer-overlay" x-show="navOpen" x-cloak @click="navOpen=false" x-transition.opacity></div>
+    <div class="drawer" x-show="navOpen" x-cloak x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+      <div class="brand">
+        <div class="mark">DZ</div>
+        <div>
+          <div class="name">DISTRITO ZERO</div>
+          <div class="tag">Calculadora de negocio</div>
+        </div>
+      </div>
+      <div class="nav">
+        <template x-for="(m, i) in modules" :key="m.id">
+          <button :class="view === m.id && 'active'" @click="view = m.id; navOpen=false">
+            <span class="idx" x-text="String(i).padStart(2,'0')"></span>
+            <span x-text="m.label"></span>
+          </button>
+        </template>
+      </div>
+      <button class="btn btn-ghost" @click="navOpen=false" style="align-self:flex-start;">Cerrar</button>
+    </div>
+
+    <main>
+
+      <!-- ============ RESUMEN ============ -->
+      <section class="module" x-show="view==='resumen'">
+        <div class="module-head">
+          <span class="eyebrow">Módulo 10</span>
+          <h1>Resumen del negocio</h1>
+          <p>La foto completa: lo que tienes, lo que has vendido y lo que falta para el punto de equilibrio.</p>
+        </div>
+
+        <div class="results-grid">
+          <div class="stat lead">
+            <span class="k">💰 Capital disponible</span>
+            <span class="v gold mono" x-text="fmtCOP(capitalDisponible)"></span>
+            <span class="sub">Capital inicial menos lo asignado en el Módulo 5</span>
+          </div>
+          <div class="stat">
+            <span class="k">📦 Invertido en inventario</span>
+            <span class="v mono" x-text="fmtCOP(inventarioValorCosto)"></span>
+            <span class="sub">Suma de costo × stock actual</span>
+          </div>
+          <div class="stat">
+            <span class="k">💵 Ventas simuladas (escenario Normal)</span>
+            <span class="v mono" x-text="fmtCOP(escenarioResultado('normal').ventas)"></span>
+            <span class="sub">Editable en el Módulo 9</span>
+          </div>
+          <div class="stat">
+            <span class="k">📈 Margen bruto promedio</span>
+            <span class="v mono" x-text="fmtPct(margenPromedioInventario)"></span>
+            <span class="sub">Sobre productos activos en inventario</span>
+          </div>
+          <div class="stat">
+            <span class="k">🧾 Contribución por pedido</span>
+            <span class="v mono" x-text="fmtCOP(contribucionPromedioPedido)"></span>
+            <span class="sub" x-text="pedidos.length ? 'Promedio de pedidos guardados' : 'Aún no hay pedidos guardados'"></span>
+          </div>
+          <div class="stat">
+            <span class="k">📦 Valor del inventario (venta)</span>
+            <span class="v mono" x-text="fmtCOP(inventarioValorVenta)"></span>
+            <span class="sub">Suma de precio de venta × stock</span>
+          </div>
+          <div class="stat">
+            <span class="k">🎯 Pedidos para equilibrio</span>
+            <span class="v mono" x-text="calc.pedidosEquilibrio > 0 ? Math.ceil(calc.pedidosEquilibrio) : '—'"></span>
+            <span class="sub">Calculado en el Módulo 4</span>
+          </div>
+          <div class="stat">
+            <span class="k">🏦 Reserva de efectivo</span>
+            <span class="v good mono" x-text="fmtCOP(p5.reserva)"></span>
+            <span class="sub">Definida en el Módulo 5</span>
+          </div>
+        </div>
+
+        <div class="banner info" x-show="!connected">
+          <span>ℹ️</span>
+          <span>Estás viendo un resumen con datos temporales. Conecta Supabase para que tu inventario y tus pedidos se guarden de forma permanente. <a href="#" @click.prevent="showConnPanel=true">Conectar ahora</a>.</span>
+        </div>
+
+        <div class="card">
+          <p class="card-title">Nota</p>
+          <p style="color:var(--text-dim); font-size:13px; margin:0;">Los cálculos de esta aplicación son administrativos y educativos: no sustituyen la asesoría contable o tributaria de un profesional.</p>
+        </div>
+      </section>
+
+      <!-- ============ MODULO 1: PRODUCTO ============ -->
+      <section class="module" x-show="view==='producto'">
+        <div class="module-head">
+          <span class="eyebrow">Módulo 1</span>
+          <h1>Calculadora de producto</h1>
+          <p>Toma una botella y responde: ¿cuánto cuesta, a cuánto se vende y cuánto deja realmente?</p>
+        </div>
+
+        <div class="results-grid">
+          <div class="stat lead">
+            <span class="k">Utilidad bruta / unidad</span>
+            <span class="v gold mono" x-text="fmtCOP(p1UtilidadBruta)"></span>
+          </div>
+          <div class="stat">
+            <span class="k">Margen bruto</span>
+            <span class="v mono" x-text="fmtPct(p1MargenPct)"></span>
+            <span class="sub">Utilidad ÷ precio de venta</span>
+          </div>
+          <div class="stat">
+            <span class="k">Markup</span>
+            <span class="v mono" x-text="fmtPct(p1MarkupPct)"></span>
+            <span class="sub">Utilidad ÷ costo de compra</span>
+          </div>
+          <div class="stat">
+            <span class="k">Inversión en este lote</span>
+            <span class="v mono" x-text="fmtCOP(p1Inversion)"></span>
+          </div>
+          <div class="stat">
+            <span class="k">Utilidad potencial del lote</span>
+            <span class="v violet mono" x-text="fmtCOP(p1UtilidadPotencial)"></span>
+          </div>
+        </div>
+
+        <div class="card">
+          <p class="card-title">Datos del producto</p>
+          <form @submit.prevent>
+            <div class="row">
+              <div class="field">
+                <label for="p1-nombre">Nombre del producto</label>
+                <input id="p1-nombre" class="input" style="font-family:var(--font-body);" type="text" placeholder="Aguardiente X" x-model="p1.nombre">
+              </div>
+              <div class="field">
+                <label for="p1-pres">Presentación</label>
+                <select id="p1-pres" class="input" x-model="p1.presentacion">
+                  <option>250 ml</option><option>375 ml</option><option>500 ml</option>
+                  <option>700 ml</option><option>750 ml</option><option>1 L</option>
+                </select>
+              </div>
+            </div>
+            <div class="row">
+              <div class="field">
+                <label for="p1-costo">Costo de compra</label>
+                <input id="p1-costo" class="input" type="number" min="0" step="any" placeholder="50000" x-model.number="p1.costo">
+              </div>
+              <div class="field">
+                <label for="p1-precio">Precio de venta</label>
+                <input id="p1-precio" class="input" type="number" min="0" step="any" placeholder="70000" x-model.number="p1.precio">
+              </div>
+              <div class="field">
+                <label for="p1-cant">Cantidad comprada</label>
+                <input id="p1-cant" class="input" type="number" min="0" step="1" placeholder="1" x-model.number="p1.cantidad">
+              </div>
+            </div>
+            <div class="actions">
+              <button type="button" class="btn btn-primary" :disabled="!connected || !p1.nombre || p1.costo<=0" @click="guardarProductoDesdeP1()">Guardar en inventario</button>
+              <span class="hint" x-show="!connected">Conecta Supabase para guardar productos</span>
+            </div>
+          </form>
+        </div>
+
+        <div class="card explain">
+          <p class="card-title">Margen vs. markup — ¿cuál es la diferencia?</p>
+          <p><b>Margen</b> es la utilidad como porcentaje del <b>precio de venta</b>. Te dice qué parte de lo que paga el cliente es ganancia.</p>
+          <p><b>Markup</b> es la utilidad como porcentaje del <b>costo</b>. Te dice cuánto le "subiste" al costo para fijar el precio.</p>
+          <div class="ex" style="background:var(--surface-2); border-left:2px solid var(--gold); border-radius:var(--radius-s); padding:11px 13px; font-size:12.5px;">
+            Ejemplo: costo $50.000, venta $70.000 → utilidad bruta $20.000 → margen 28,57 % · markup 40 %.
+            El margen siempre es menor que el markup cuando hay ganancia, porque el precio de venta es mayor que el costo.
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ MODULO 2: COSTOS DEL PEDIDO ============ -->
+      <section class="module" x-show="view==='pedido-costos'">
+        <div class="module-head">
+          <span class="eyebrow">Módulo 2</span>
+          <h1>Costos de cada pedido</h1>
+          <p>La utilidad bruta no es lo que ganas. Réstale lo que cuesta entregar el pedido.</p>
+        </div>
+
+        <div class="results-grid">
+          <div class="stat">
+            <span class="k">Utilidad bruta</span>
+            <span class="v mono" x-text="fmtCOP(p2UtilidadBruta)"></span>
+          </div>
+          <div class="stat">
+            <span class="k">Costos variables del pedido</span>
+            <span class="v danger mono" x-text="fmtCOP(p2CostosVariables)"></span>
+          </div>
+          <div class="stat lead">
+            <span class="k">Contribución real del pedido</span>
+            <span class="v gold mono" x-text="fmtCOP(p2Contribucion)"></span>
+          </div>
+        </div>
+        <div class="banner info">
+          <span>🧾</span>
+          <span>Esto es lo que realmente aporta este pedido antes de gastos fijos e impuestos.</span>
+        </div>
+
+        <div class="card">
+          <p class="card-title">Producto y costos variables</p>
+          <form @submit.prevent>
+            <div class="row">
+              <div class="field"><label>Costo de compra (unidad)</label><input class="input" type="number" min="0" step="any" placeholder="50000" x-model.number="p2.costo"></div>
+              <div class="field"><label>Precio de venta (unidad)</label><input class="input" type="number" min="0" step="any" placeholder="70000" x-model.number="p2.precio"></div>
+              <div class="field"><label>Cantidad</label><input class="input" type="number" min="0" step="1" placeholder="1" x-model.number="p2.cantidad"></div>
+            </div>
+            <div class="row">
+              <div class="field"><label>Empaque</label><input class="input" type="number" min="0" step="any" placeholder="2000" x-model.number="p2.empaque"></div>
+              <div class="field"><label>Detalle / regalito</label><input class="input" type="number" min="0" step="any" placeholder="1000" x-model.number="p2.detalle"></div>
+              <div class="field"><label>Subsidio de domicilio</label><input class="input" type="number" min="0" step="any" placeholder="5000" x-model.number="p2.subsidio"></div>
+              <div class="field"><label>Otros costos variables</label><input class="input" type="number" min="0" step="any" placeholder="0" x-model.number="p2.otros"></div>
+            </div>
+            <div class="field" style="max-width:320px;">
+              <label>Comisión del medio de pago</label>
+              <div class="seg">
+                <button type="button" :class="p2.comisionModo==='pct' && 'active'" @click="p2.comisionModo='pct'">Porcentaje</button>
+                <button type="button" :class="p2.comisionModo==='valor' && 'active'" @click="p2.comisionModo='valor'">Valor fijo</button>
+              </div>
+              <input class="input" type="number" min="0" step="any" :placeholder="p2.comisionModo==='pct' ? '3 (%)' : '2000'" x-model.number="p2.comisionValor">
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ============ MODULO 3: SIMULADOR DE PRECIO ============ -->
+      <section class="module" x-show="view==='precio'">
+        <div class="module-head">
+          <span class="eyebrow">Módulo 3</span>
+          <h1>Simulador de precio</h1>
+          <p>Parte del margen que quieres ganar, o de un precio, y descubre lo que falta.</p>
+        </div>
+
+        <div class="seg">
+          <button :class="p3.modo==='margen' && 'active'" @click="p3.modo='margen'">Calcular precio desde margen</button>
+          <button :class="p3.modo==='precio' && 'active'" @click="p3.modo='precio'">Calcular margen desde precio</button>
+        </div>
+
+        <template x-if="p3.modo==='margen'">
+          <div style="display:flex; flex-direction:column; gap:18px;">
+            <div class="results-grid">
+              <div class="stat lead">
+                <span class="k">Precio de venta sugerido</span>
+                <span class="v gold mono" x-text="fmtCOP(p3PrecioSugerido)"></span>
+                <span class="sub">costo ÷ (1 − margen objetivo)</span>
+              </div>
+              <div class="stat">
+                <span class="k">Utilidad bruta resultante</span>
+                <span class="v mono" x-text="fmtCOP(p3PrecioSugerido - p3.costo)"></span>
+              </div>
+            </div>
+            <div class="card">
+              <form @submit.prevent>
+                <div class="row">
+                  <div class="field"><label>Costo del producto</label><input class="input" type="number" min="0" step="any" placeholder="50000" x-model.number="p3.costo"></div>
+                  <div class="field"><label>Margen objetivo (%)</label><input class="input" type="number" min="0" max="99" step="any" placeholder="30" x-model.number="p3.margenObjetivo"></div>
+                </div>
+              </form>
+              <p class="note">Ejemplo: costo $50.000 con margen objetivo 30 % → precio sugerido $71.429. Un margen objetivo de 100 % o más no es válido (no existe un precio que lo produzca).</p>
+            </div>
+          </div>
+        </template>
+
+        <template x-if="p3.modo==='precio'">
+          <div style="display:flex; flex-direction:column; gap:18px;">
+            <div class="results-grid">
+              <div class="stat lead">
+                <span class="k">Margen que produce ese precio</span>
+                <span class="v gold mono" x-text="fmtPct(p3MargenDesdeManual)"></span>
+              </div>
+              <div class="stat">
+                <span class="k">Markup equivalente</span>
+                <span class="v mono" x-text="fmtPct(p3MarkupDesdeManual)"></span>
+              </div>
+              <div class="stat">
+                <span class="k">Utilidad bruta</span>
+                <span class="v mono" x-text="fmtCOP(p3.precioManual - p3.costo)"></span>
+              </div>
+            </div>
+            <div class="card">
+              <form @submit.prevent>
+                <div class="row">
+                  <div class="field"><label>Costo del producto</label><input class="input" type="number" min="0" step="any" placeholder="50000" x-model.number="p3.costo"></div>
+                  <div class="field"><label>Precio de venta manual</label><input class="input" type="number" min="0" step="any" placeholder="71429" x-model.number="p3.precioManual"></div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </template>
+      </section>
+
+      <!-- ============ MODULO 4: PUNTO DE EQUILIBRIO ============ -->
+      <section class="module" x-show="view==='equilibrio'">
+        <div class="module-head">
+          <span class="eyebrow">Módulo 4</span>
+          <h1>Punto de equilibrio</h1>
+          <p>¿Cuántos pedidos necesitas al mes para que Distrito Zero no pierda ni gane?</p>
+        </div>
+
+        <div class="results-grid">
+          <div class="stat lead">
+            <span class="k">Pedidos necesarios al mes</span>
+            <span class="v gold mono" x-text="p4PedidosEquilibrio>0 ? Math.ceil(p4PedidosEquilibrio) : '—'"></span>
+            <span class="sub">gastos fijos ÷ contribución promedio</span>
+          </div>
+          <div class="stat">
+            <span class="k">Ventas mensuales necesarias</span>
+            <span class="v mono" x-text="p4.ticketPromedio>0 ? fmtCOP(Math.ceil(p4PedidosEquilibrio) * p4.ticketPromedio) : '—'"></span>
+          </div>
+        </div>
+        <div class="banner warn" x-show="p4.contribucionPromedio<=0">
+          <span>⚠️</span><span>Ingresa una contribución promedio por pedido mayor a cero para calcular el punto de equilibrio.</span>
+        </div>
+
+        <div class="card">
+          <p class="card-title">Datos mensuales</p>
+          <form @submit.prevent>
+            <div class="row">
+              <div class="field">
+                <label>Gastos fijos mensuales</label>
+                <input class="input" type="number" min="0" step="any" placeholder="1200000" x-model.number="p4.gastosFijos">
+                <span class="hint" x-show="gastosFijosRegistrados>0">Suma registrada en tu lista de gastos: <span class="mono" x-text="fmtCOP(gastosFijosRegistrados)"></span> — <a href="#" @click.prevent="p4.gastosFijos = gastosFijosRegistrados">usar este valor</a></span>
+              </div>
+              <div class="field">
+                <label>Contribución promedio por pedido</label>
+                <input class="input" type="number" min="0" step="any" placeholder="30000" x-model.number="p4.contribucionPromedio">
+                <span class="hint">Puedes tomar este dato del Módulo 2 o del Módulo 7.</span>
+              </div>
+              <div class="field">
+                <label>Ticket promedio por pedido</label>
+                <input class="input" type="number" min="0" step="any" placeholder="70000" x-model.number="p4.ticketPromedio">
+              </div>
+            </div>
+            <div class="actions">
+              <button type="button" class="btn btn-primary" @click="calc.pedidosEquilibrio = p4PedidosEquilibrio">Usar este resultado en el Resumen</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <p class="card-title">De la venta a la utilidad neta</p>
+          <div class="flow">
+            <div class="flow-step"><span class="lbl">Ventas</span><span class="val" x-text="p4.ticketPromedio>0 ? fmtCOP(Math.ceil(p4PedidosEquilibrio||0) * p4.ticketPromedio) : '—'"></span></div>
+            <div class="flow-arrow">↓ costo del producto</div>
+            <div class="flow-step"><span class="lbl">Utilidad bruta</span><span class="val">—</span></div>
+            <div class="flow-arrow">↓ costos variables (empaque, comisión, domicilio…)</div>
+            <div class="flow-step"><span class="lbl">Contribución</span><span class="val mono" x-text="fmtCOP(p4.contribucionPromedio)"></span></div>
+            <div class="flow-arrow">↓ gastos fijos</div>
+            <div class="flow-step" :class="p4.gastosFijos>0 && 'neg'"><span class="lbl">Gastos fijos</span><span class="val" x-text="fmtCOP(p4.gastosFijos)"></span></div>
+            <div class="flow-arrow">=</div>
+            <div class="flow-step total"><span class="lbl">Utilidad neta operativa (en el punto de equilibrio)</span><span class="val">$0</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <p class="card-title">Gastos fijos registrados</p>
+          <form @submit.prevent="agregarGasto()" class="row" style="align-items:end;">
+            <div class="field"><label>Concepto</label><input class="input" style="font-family:var(--font-body);" type="text" placeholder="Arriendo bodega" x-model="gastoForm.concepto" required></div>
+            <div class="field"><label>Categoría</label><input class="input" style="font-family:var(--font-body);" type="text" placeholder="Operación" x-model="gastoForm.categoria"></div>
+            <div class="field"><label>Valor</label><input class="input" type="number" min="0" step="any" placeholder="450000" x-model.number="gastoForm.valor" required></div>
+            <div class="field">
+              <label>Tipo</label>
+              <select class="input" style="font-family:var(--font-body);" x-model="gastoForm.tipo"><option value="fijo">Fijo</option><option value="variable">Variable</option></select>
+            </div>
+            <button class="btn btn-violet" type="submit" :disabled="!connected">Agregar</button>
+          </form>
+          <p class="hint" x-show="!connected" style="margin-top:8px;">Conecta Supabase para guardar tu lista de gastos.</p>
+          <div class="table-wrap" style="margin-top:14px;" x-show="gastos.length">
+            <table>
+              <thead><tr><th>Concepto</th><th>Categoría</th><th>Tipo</th><th class="num">Valor</th><th></th></tr></thead>
+              <tbody>
+                <template x-for="g in gastos" :key="g.id">
+                  <tr>
+                    <td x-text="g.concepto"></td>
+                    <td x-text="g.categoria || '—'"></td>
+                    <td><span class="badge" :class="g.tipo==='fijo' ? 'dim' : 'warn'" x-text="g.tipo"></span></td>
+                    <td class="num" x-text="fmtCOP(g.valor)"></td>
+                    <td style="text-align:right;"><button class="btn btn-icon btn-ghost" @click="eliminarGasto(g.id)" aria-label="Eliminar gasto">✕</button></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ MODULO 5: CAPITAL INICIAL ============ -->
+      <section class="module" x-show="view==='capital'">
+        <div class="module-head">
+          <span class="eyebrow">Módulo 5</span>
+          <h1>Capital inicial</h1>
+          <p>Distribuye tu capital de arranque y mira cuánto te queda libre.</p>
+        </div>
+
+        <div class="results-grid">
+          <div class="stat lead">
+            <span class="k">Capital disponible sin asignar</span>
+            <span class="v mono" :class="capitalDisponible < 0 ? 'danger' : 'gold'" x-text="fmtCOP(capitalDisponible)"></span>
+          </div>
+          <div class="stat">
+            <span class="k">Total asignado</span>
+            <span class="v mono" x-text="fmtCOP(capitalAsignadoTotal)"></span>
+            <span class="sub" x-text="fmtPct(safeDiv(capitalAsignadoTotal, p5.capital)*100) + ' del capital'"></span>
+          </div>
+        </div>
+
+        <div class="banner danger" x-show="capitalDisponible < 0">
+          <span>⚠️</span><span>Estás asignando más dinero del que tienes disponible.</span>
+        </div>
+        <div class="banner warn" x-show="capitalDisponible >= 0 && safeDiv(p5.inventario, p5.capital) >= 0.8">
+          <span>⚠️</span><span>Casi todo tu capital quedaría en inventario. Eso es una decisión válida, pero te deja poco para publicidad, domicilios o imprevistos — considera si quieres dejar algo de reserva.</span>
+        </div>
+
+        <div class="card">
+          <p class="card-title">Capital total</p>
+          <div class="field" style="max-width:280px;">
+            <label>Capital inicial disponible</label>
+            <input class="input" type="number" min="0" step="any" x-model.number="p5.capital">
+          </div>
+        </div>
+
+        <div class="card">
+          <p class="card-title">Asignación por categoría</p>
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <template x-for="cat in capitalCategorias" :key="cat.key">
+              <div class="field">
+                <label x-text="cat.label"></label>
+                <div class="row" style="grid-template-columns:1fr 1fr;">
+                  <input class="input" type="number" min="0" step="any" x-model.number="p5[cat.key]">
+                  <div class="cap-bar" style="align-self:center;"><div class="seg-fill" :style="`width:${Math.min(100, safeDiv(p5[cat.key], p5.capital)*100)}%; background:${cat.color}`"></div></div>
+                </div>
+                <span class="hint" x-text="fmtPct(safeDiv(p5[cat.key], p5.capital)*100) + ' del capital'"></span>
+              </div>
+            </template>
+          </div>
+          <div class="actions" style="margin-top:16px;">
+            <button class="btn btn-primary" :disabled="!connected" @click="guardarCapital()">Guardar asignación</button>
+            <span class="hint" x-show="!connected">Conecta Supabase para guardar esta distribución</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ MODULO 6: INVENTARIO ============ -->
+      <section class="module" x-show="view==='inventario'">
+        <div class="module-head">
+          <span class="eyebrow">Módulo 6</span>
+          <h1>Inventario</h1>
+          <p>Tus productos, su margen y cuánto dinero tienes comprometido en cada uno.</p>
+        </div>
+
+        <div class="results-grid">
+          <div class="stat lead"><span class="k">Valor del inventario (costo)</span><span class="v gold mono" x-text="fmtCOP(inventarioValorCosto)"></span></div>
+          <div class="stat"><span class="k">Unidades totales</span><span class="v mono" x-text="inventarioUnidades"></span></div>
+          <div class="stat"><span class="k">Utilidad potencial</span><span class="v mono" x-text="fmtCOP(inventarioUtilidadPotencial)"></span></div>
+          <div class="stat">
+            <span class="k">Mayor margen (dato, no recomendación)</span>
+            <span class="v small mono" x-text="productoMayorMargen ? productoMayorMargen.nombre : '—'"></span>
+            <span class="sub" x-text="productoMayorMargen ? fmtPct(margenDe(productoMayorMargen)) : ''"></span>
+          </div>
+        </div>
+
+        <div class="banner info" x-show="!connected">
+          <span>ℹ️</span><span>Conecta Supabase para ver, agregar y editar tu inventario real.</span>
+        </div>
+
+        <div class="card" x-show="connected">
+          <div class="actions" style="justify-content:space-between;">
+            <p class="card-title" style="margin:0;">Productos</p>
+            <button class="btn btn-violet btn-sm" @click="abrirNuevoProducto()">+ Agregar producto</button>
+          </div>
+          <div class="table-wrap" style="margin-top:12px;">
+            <table>
+              <thead><tr>
+                <th>Producto</th><th>Presentación</th><th class="num">Costo</th><th class="num">Precio</th>
+                <th class="num">Stock</th><th class="num">Margen</th><th class="num">Inversión</th><th></th>
+              </tr></thead>
+              <tbody>
+                <tr class="empty-row" x-show="!productos.length"><td colspan="8">Aún no tienes productos. Agrega el primero.</td></tr>
+                <template x-for="p in productos" :key="p.id">
+                  <tr>
+                    <td x-text="p.nombre"></td>
+                    <td x-text="p.presentacion"></td>
+                    <td class="num" x-text="fmtCOP(p.costo_compra)"></td>
+                    <td class="num" x-text="fmtCOP(p.precio_venta)"></td>
+                    <td class="num" x-text="p.stock"></td>
+                    <td class="num" x-text="fmtPct(margenDe(p))"></td>
+                    <td class="num" x-text="fmtCOP(p.costo_compra * p.stock)"></td>
+                    <td style="text-align:right; white-space:nowrap;">
+                      <button class="btn btn-icon btn-ghost" @click="abrirMovimiento(p)" title="Registrar movimiento">↕</button>
+                      <button class="btn btn-icon btn-ghost" @click="editarProducto(p)" title="Editar">✎</button>
+                      <button class="btn btn-icon btn-ghost" @click="eliminarProducto(p)" title="Eliminar">✕</button>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- modal producto -->
+        <div class="drawer-overlay" x-show="invFormOpen" x-cloak @click="invFormOpen=false" style="z-index:50;"></div>
+        <div class="card" x-show="invFormOpen" x-cloak style="position:fixed; z-index:51; top:10%; left:50%; transform:translateX(-50%); width:min(92vw, 420px); max-height:80vh; overflow:auto;">
+          <p class="card-title" x-text="invForm.id ? 'Editar producto' : 'Nuevo producto'"></p>
+          <form @submit.prevent="guardarProducto()">
+            <div class="field"><label>Nombre</label><input class="input" style="font-family:var(--font-body);" type="text" x-model="invForm.nombre" required></div>
+            <div class="row">
+              <div class="field">
+                <label>Presentación</label>
+                <select class="input" x-model="invForm.presentacion">
+                  <option>250 ml</option><option>375 ml</option><option>500 ml</option>
+                  <option>700 ml</option><option>750 ml</option><option>1 L</option>
+                </select>
+              </div>
+              <div class="field"><label>Categoría</label><input class="input" style="font-family:var(--font-body);" type="text" placeholder="Aguardiente" x-model="invForm.categoria"></div>
+            </div>
+            <div class="row">
+              <div class="field"><label>Costo de compra</label><input class="input" type="number" min="0" step="any" x-model.number="invForm.costo" required></div>
+              <div class="field"><label>Precio de venta</label><input class="input" type="number" min="0" step="any" x-model.number="invForm.precio" required></div>
+            </div>
+            <div class="field" x-show="!invForm.id"><label>Stock inicial</label><input class="input" type="number" min="0" step="1" x-model.number="invForm.stock"></div>
+            <div class="actions">
+              <button class="btn btn-primary" type="submit">Guardar</button>
+              <button class="btn btn-ghost" type="button" @click="invFormOpen=false">Cancelar</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- modal movimiento -->
+        <div class="drawer-overlay" x-show="movFormOpen" x-cloak @click="movFormOpen=false" style="z-index:50;"></div>
+        <div class="card" x-show="movFormOpen" x-cloak style="position:fixed; z-index:51; top:10%; left:50%; transform:translateX(-50%); width:min(92vw, 380px);">
+          <p class="card-title">Movimiento de inventario — <span x-text="movFormProductoNombre"></span></p>
+          <form @submit.prevent="registrarMovimiento()">
+            <div class="field">
+              <label>Tipo</label>
+              <select class="input" x-model="movForm.tipo">
+                <option value="entrada">Entrada (compra)</option>
+                <option value="venta">Venta manual</option>
+                <option value="ajuste">Ajuste (+/-)</option>
+              </select>
+            </div>
+            <div class="field"><label>Cantidad</label><input class="input" type="number" step="1" x-model.number="movForm.cantidad" required></div>
+            <div class="field"><label>Observaciones</label><input class="input" style="font-family:var(--font-body);" type="text" x-model="movForm.obs" placeholder="Opcional"></div>
+            <span class="hint" x-show="movForm.tipo==='ajuste'">Usa un número negativo para restar unidades (por ejemplo: -2).</span>
+            <div class="actions"><button class="btn btn-primary" type="submit">Registrar</button><button class="btn btn-ghost" type="button" @click="movFormOpen=false">Cancelar</button></div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ============ MODULO 7: SIMULADOR DE PEDIDO ============ -->
+      <section class="module" x-show="view==='simulador-pedido'">
+        <div class="module-head">
+          <span class="eyebrow">Módulo 7</span>
+          <h1>Simulador de pedido</h1>
+          <p>Arma un pedido completo y mira su contribución real antes de confirmarlo.</p>
+        </div>
+
+        <div class="results-grid">
+          <div class="stat"><span class="k">Venta total</span><span class="v mono" x-text="fmtCOP(p7VentaTotal)"></span></div>
+          <div class="stat"><span class="k">Costo productos</span><span class="v mono" x-text="fmtCOP(p7CostoProductos)"></span></div>
+          <div class="stat"><span class="k">Utilidad bruta</span><span class="v mono" x-text="fmtCOP(p7UtilidadBruta)"></span></div>
+          <div class="stat"><span class="k">Costos variables</span><span class="v danger mono" x-text="fmtCOP(p7CostosVariables)"></span></div>
+          <div class="stat lead"><span class="k">Contribución real</span><span class="v gold mono" x-text="fmtCOP(p7Contribucion)"></span></div>
+          <div class="stat"><span class="k">Margen de contribución</span><span class="v mono" x-text="fmtPct(p7MargenContribucion)"></span></div>
+        </div>
+
+        <div class="card">
+          <p class="card-title">Productos del pedido</p>
+          <div class="row" style="align-items:end;" x-show="connected">
+            <div class="field">
+              <label>Producto</label>
+              <select class="input" x-model="p7NewItem.productoId">
+                <option value="">Selecciona…</option>
+                <template x-for="p in productos" :key="p.id"><option :value="p.id" x-text="`${p.nombre} — ${p.presentacion}`"></option></template>
+              </select>
+            </div>
+            <div class="field"><label>Cantidad</label><input class="input" type="number" min="1" step="1" x-model.number="p7NewItem.cantidad"></div>
+            <button class="btn btn-violet" type="button" @click="agregarItemPedido()">Agregar</button>
+          </div>
+          <p class="hint" x-show="!connected">Conecta Supabase y agrega productos a tu inventario (Módulo 6) para simular con tus datos reales — o registra líneas manuales abajo.</p>
+
+          <div class="row" style="align-items:end; margin-top:10px;" x-show="!connected">
+            <div class="field"><label>Nombre (manual)</label><input class="input" style="font-family:var(--font-body);" type="text" x-model="p7NewItem.nombreManual" placeholder="Aguardiente X"></div>
+            <div class="field"><label>Cantidad</label><input class="input" type="number" min="1" step="1" x-model.number="p7NewItem.cantidad"></div>
+            <div class="field"><label>Costo unidad</label><input class="input" type="number" min="0" step="any" x-model.number="p7NewItem.costoManual"></div>
+            <div class="field"><label>Precio unidad</label><input class="input" type="number" min="0" step="any" x-model.number="p7NewItem.precioManual"></div>
+            <button class="btn btn-violet" type="button" @click="agregarItemPedidoManual()">Agregar</button>
+          </div>
+
+          <div class="table-wrap" style="margin-top:14px;" x-show="p7.items.length">
+            <table>
+              <thead><tr><th>Producto</th><th class="num">Cant.</th><th class="num">Precio</th><th class="num">Costo</th><th class="num">Subtotal</th><th></th></tr></thead>
+              <tbody>
+                <template x-for="(it, idx) in p7.items" :key="idx">
+                  <tr>
+                    <td x-text="it.nombre"></td>
+                    <td class="num" x-text="it.cantidad"></td>
+                    <td class="num" x-text="fmtCOP(it.precioUnit)"></td>
+                    <td class="num" x-text="fmtCOP(it.costoUnit)"></td>
+                    <td class="num" x-text="fmtCOP(it.cantidad*it.precioUnit)"></td>
+                    <td style="text-align:right;"><button class="btn btn-icon btn-ghost" @click="p7.items.splice(idx,1)">✕</button></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <p class="card-title">Costos del pedido</p>
+          <form @submit.prevent>
+            <div class="row">
+              <div class="field"><label>Empaque</label><input class="input" type="number" min="0" step="any" x-model.number="p7.empaque"></div>
+              <div class="field"><label>Detalle / regalito</label><input class="input" type="number" min="0" step="any" x-model.number="p7.detalle"></div>
+              <div class="field"><label>Subsidio de domicilio</label><input class="input" type="number" min="0" step="any" x-model.number="p7.subsidio"></div>
+              <div class="field"><label>Otros</label><input class="input" type="number" min="0" step="any" x-model.number="p7.otros"></div>
+            </div>
+            <div class="field" style="max-width:320px;">
+              <label>Comisión del medio de pago</label>
+              <div class="seg">
+                <button type="button" :class="p7.comisionModo==='pct' && 'active'" @click="p7.comisionModo='pct'">Porcentaje</button>
+                <button type="button" :class="p7.comisionModo==='valor' && 'active'" @click="p7.comisionModo='valor'">Valor fijo</button>
+              </div>
+              <input class="input" type="number" min="0" step="any" x-model.number="p7.comisionValor">
+            </div>
+            <div class="field"><label>Observaciones</label><textarea class="input" x-model="p7.observaciones"></textarea></div>
+          </form>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" :disabled="!connected || !p7.items.length || guardandoPedido" @click="guardarPedido()">
+            <span x-text="guardandoPedido ? 'Guardando…' : 'Registrar pedido y descontar inventario'"></span>
+          </button>
+          <button class="btn btn-ghost" @click="calc.contribucionUltimaSimulacion = p7Contribucion; view='equilibrio'; p4.contribucionPromedio = p7Contribucion">Usar contribución en Módulo 4</button>
+        </div>
+        <div class="banner good" x-show="pedidoGuardadoMsg" x-text="pedidoGuardadoMsg"></div>
+        <div class="banner danger" x-show="pedidoErrorMsg" x-text="pedidoErrorMsg"></div>
+      </section>
+
+      <!-- ============ MODULO 8: APRENDER ============ -->
+      <section class="module" x-show="view==='aprender'">
+        <div class="module-head">
+          <span class="eyebrow">Módulo 8</span>
+          <h1>Aprender</h1>
+          <p>Conceptos cortos, con ejemplos de Distrito Zero, sin jerga innecesaria.</p>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <template x-for="c in conceptos" :key="c.q">
+            <details class="accordion-item">
+              <summary><span x-text="c.q"></span><span class="plus">+</span></summary>
+              <div class="body">
+                <p x-text="c.a" style="margin:0 0 4px;"></p>
+                <div class="ex" x-text="c.ex"></div>
+              </div>
+            </details>
+          </template>
+        </div>
+      </section>
+
+      <!-- ============ MODULO 9: ESCENARIOS ============ -->
+      <section class="module" x-show="view==='escenarios'">
+        <div class="module-head">
+          <span class="eyebrow">Módulo 9</span>
+          <h1>Escenarios</h1>
+          <p>Compara tres futuros posibles usando solo los números que tú ingreses — sin predicciones.</p>
+        </div>
+
+        <div class="scen-grid">
+          <template x-for="key in ['conservador','normal','crecimiento']" :key="key">
+            <div class="card scen-card">
+              <h3 :style="`color:${key==='conservador' ? 'var(--text-dim)' : key==='normal' ? 'var(--violet)' : 'var(--gold)'}`" x-text="key.charAt(0).toUpperCase()+key.slice(1)"></h3>
+              <form @submit.prevent>
+                <div class="field"><label>Pedidos mensuales</label><input class="input" type="number" min="0" step="1" x-model.number="esc[key].pedidos"></div>
+                <div class="field"><label>Ticket promedio</label><input class="input" type="number" min="0" step="any" x-model.number="esc[key].ticket"></div>
+                <div class="field"><label>Margen / contribución (%)</label><input class="input" type="number" min="0" max="100" step="any" x-model.number="esc[key].margenPct"></div>
+                <div class="field"><label>Gastos fijos</label><input class="input" type="number" min="0" step="any" x-model.number="esc[key].gastosFijos"></div>
+              </form>
+              <div style="display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--border-soft); padding-top:12px;">
+                <div class="stat" style="padding:10px 12px;"><span class="k">Ventas estimadas</span><span class="v small mono" x-text="fmtCOP(escenarioResultado(key).ventas)"></span></div>
+                <div class="stat" style="padding:10px 12px;"><span class="k">Costos variables</span><span class="v small mono" x-text="fmtCOP(escenarioResultado(key).costosVariables)"></span></div>
+                <div class="stat" style="padding:10px 12px;"><span class="k">Contribución</span><span class="v small mono" x-text="fmtCOP(escenarioResultado(key).contribucion)"></span></div>
+                <div class="stat" style="padding:10px 12px;"><span class="k">Resultado operativo</span><span class="v small mono" :class="escenarioResultado(key).resultado>=0 ? 'good' : 'danger'" x-text="fmtCOP(escenarioResultado(key).resultado)"></span></div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </section>
+
+      <footer class="foot">Distrito Zero — Calculadora de negocio · Los cálculos son administrativos y no sustituyen asesoría contable o tributaria.</footer>
+    </main>
+  </div>
+
+  <!-- ============ PANEL DE CONEXIÓN SUPABASE ============ -->
+  <div class="drawer-overlay" x-show="showConnPanel" x-cloak @click="showConnPanel=false" style="z-index:60;"></div>
+  <div class="card" x-show="showConnPanel" x-cloak
+       style="position:fixed; z-index:61; top:6%; left:50%; transform:translateX(-50%); width:min(94vw, 560px); max-height:88vh; overflow:auto;">
+    <p class="card-title" style="margin-bottom:4px;">Conexión con Supabase</p>
+    <p style="font-size:12.5px; color:var(--text-dim); margin:0 0 16px;">
+      Tus datos se guardan de forma permanente en tu propio proyecto gratuito de Supabase. La URL y la llave "anon" no son secretas —
+      están protegidas por las reglas de seguridad (RLS) del script SQL— pero solo tú las guardas, aquí, en tu propio navegador.
+    </p>
+
+    <template x-if="!connected">
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <ol class="steps">
+          <li><p>Crea un proyecto gratuito en <a href="https://supabase.com" target="_blank" rel="noopener">supabase.com</a></p><span>Regístrate, "New project", elige una contraseña de base de datos y espera ~2 minutos.</span></li>
+          <li><p>Ejecuta el script de creación de tablas</p><span>En tu proyecto: SQL Editor → New query → pega el script de abajo → Run.</span></li>
+          <li><p>Copia tu URL y tu "anon public key"</p><span>Project Settings → API.</span></li>
+          <li><p>Pégalas aquí abajo y conecta</p><span>Quedan guardadas solo en este navegador.</span></li>
+        </ol>
+
+        <details class="accordion-item">
+          <summary><span>Ver script SQL de las tablas</span><span class="plus">+</span></summary>
+          <div class="body">
+            <div class="actions" style="margin:10px 0;">
+              <button class="btn btn-sm btn-violet" type="button" @click="copiarSQL()"><span x-text="sqlCopiado ? 'Copiado ✓' : 'Copiar script'"></span></button>
+            </div>
+            <div class="code-box"><pre x-text="SQL_SCRIPT"></pre></div>
+          </div>
+        </details>
+
+        <form @submit.prevent="conectar()" style="display:flex; flex-direction:column; gap:12px;">
+          <div class="field"><label>Project URL</label><input class="input" type="text" placeholder="https://xxxxx.supabase.co" x-model.trim="sbUrl" required></div>
+          <div class="field"><label>Anon public key</label><input class="input" type="text" placeholder="eyJhbGciOi..." x-model.trim="sbKey" required></div>
+          <div class="banner danger" x-show="connError" x-text="connError"></div>
+          <div class="actions">
+            <button class="btn btn-primary" type="submit" :disabled="connecting"><span x-text="connecting ? 'Conectando…' : 'Conectar'"></span></button>
+            <button class="btn btn-ghost" type="button" @click="showConnPanel=false">Seguir sin conectar</button>
+          </div>
+        </form>
+      </div>
+    </template>
+
+    <template x-if="connected">
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="banner good"><span>✓</span><span>Conectado a tu proyecto de Supabase. Tus datos se guardan de forma permanente.</span></div>
+        <p class="mono" style="font-size:12px; color:var(--text-faint); word-break:break-all;" x-text="sbUrl"></p>
+        <div class="actions">
+          <button class="btn btn-ghost" type="button" @click="showConnPanel=false">Cerrar</button>
+          <button class="btn btn-danger" type="button" @click="desconectar()">Desconectar</button>
+        </div>
+      </div>
+    </template>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+  // ---------- helpers ----------
+  function toNum(v){ const n = Number(v); return Number.isFinite(n) ? n : 0; }
+  function safeDiv(a, b){ a = toNum(a); b = toNum(b); if (b === 0) return 0; const r = a / b; return Number.isFinite(r) ? r : 0; }
+  function fmtCOP(n){
+    n = toNum(n);
+    const neg = n < 0;
+    n = Math.round(Math.abs(n));
+    const s = n.toLocaleString('es-CO');
+    return (neg ? '-$' : '$') + s;
+  }
+  function fmtPct(n, d){
+    n = toNum(n);
+    if (d === undefined) d = 2;
+    return n.toLocaleString('es-CO', { minimumFractionDigits: d, maximumFractionDigits: d }) + '%';
+  }
+
+  const SQL_SCRIPT = `-- ============================================================
+-- Distrito Zero — Calculadora de Negocio
+-- Script de creación de base de datos para Supabase (PostgreSQL)
+-- ============================================================
+-- Cómo usar:
+-- 1. Entra a tu proyecto en https://supabase.com
+-- 2. Ve a "SQL Editor" -> "New query"
+-- 3. Pega TODO este archivo y presiona "Run"
+-- ============================================================
+
+create extension if not exists "pgcrypto";
+
+create table if not exists configuracion (
+  id uuid primary key default gen_random_uuid(),
+  capital_inicial numeric(14,2) not null default 0,
+  margen_objetivo numeric(5,2) not null default 30,
+  costo_empaque_predeterminado numeric(14,2) not null default 0,
+  costo_detalle_predeterminado numeric(14,2) not null default 0,
+  subsidio_domicilio_predeterminado numeric(14,2) not null default 0,
+  comision_pago_predeterminada numeric(5,2) not null default 0,
+  otros_valores jsonb not null default '{}'::jsonb,
+  creado_en timestamptz not null default now(),
+  actualizado_en timestamptz not null default now()
+);
+
+create table if not exists productos (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  presentacion text not null,
+  categoria text,
+  costo_compra numeric(14,2) not null check (costo_compra >= 0),
+  precio_venta numeric(14,2) not null check (precio_venta >= 0),
+  stock integer not null default 0 check (stock >= 0),
+  activo boolean not null default true,
+  fecha_creacion timestamptz not null default now(),
+  fecha_actualizacion timestamptz not null default now()
+);
+
+create index if not exists idx_productos_activo on productos (activo);
+
+create table if not exists movimientos_inventario (
+  id uuid primary key default gen_random_uuid(),
+  producto_id uuid not null references productos(id) on delete cascade,
+  tipo_movimiento text not null check (tipo_movimiento in ('entrada', 'venta', 'ajuste')),
+  cantidad integer not null check (cantidad <> 0),
+  costo_unitario numeric(14,2),
+  fecha timestamptz not null default now(),
+  observaciones text
+);
+
+create index if not exists idx_movimientos_producto on movimientos_inventario (producto_id);
+create index if not exists idx_movimientos_fecha on movimientos_inventario (fecha);
+
+create table if not exists pedidos (
+  id uuid primary key default gen_random_uuid(),
+  fecha timestamptz not null default now(),
+  estado text not null default 'registrado' check (estado in ('registrado', 'entregado', 'cancelado')),
+  subtotal numeric(14,2) not null default 0,
+  domicilio numeric(14,2) not null default 0,
+  descuento numeric(14,2) not null default 0,
+  total numeric(14,2) not null default 0,
+  costo_productos numeric(14,2) not null default 0,
+  costos_variables numeric(14,2) not null default 0,
+  contribucion numeric(14,2) not null default 0,
+  observaciones text
+);
+
+create index if not exists idx_pedidos_fecha on pedidos (fecha);
+
+create table if not exists detalle_pedidos (
+  id uuid primary key default gen_random_uuid(),
+  pedido_id uuid not null references pedidos(id) on delete cascade,
+  producto_id uuid not null references productos(id),
+  cantidad integer not null check (cantidad > 0),
+  precio_unitario numeric(14,2) not null check (precio_unitario >= 0),
+  costo_unitario numeric(14,2) not null check (costo_unitario >= 0)
+);
+
+create index if not exists idx_detalle_pedido on detalle_pedidos (pedido_id);
+create index if not exists idx_detalle_producto on detalle_pedidos (producto_id);
+
+create table if not exists gastos (
+  id uuid primary key default gen_random_uuid(),
+  concepto text not null,
+  categoria text,
+  valor numeric(14,2) not null check (valor >= 0),
+  fecha timestamptz not null default now(),
+  tipo text not null check (tipo in ('fijo', 'variable'))
+);
+
+create index if not exists idx_gastos_tipo on gastos (tipo);
+create index if not exists idx_gastos_fecha on gastos (fecha);
+
+create or replace function fn_productos_set_actualizado()
+returns trigger as $$
+begin
+  new.fecha_actualizacion = now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_productos_actualizado on productos;
+create trigger trg_productos_actualizado
+  before update on productos
+  for each row
+  execute function fn_productos_set_actualizado();
+
+create or replace function fn_movimientos_aplicar_stock()
+returns trigger as $$
+declare
+  stock_actual integer;
+  nuevo_stock integer;
+begin
+  select stock into stock_actual from productos where id = new.producto_id for update;
+
+  if new.tipo_movimiento = 'entrada' then
+    nuevo_stock := stock_actual + abs(new.cantidad);
+  elsif new.tipo_movimiento = 'venta' then
+    if stock_actual < abs(new.cantidad) then
+      raise exception 'Stock insuficiente: disponible %, solicitado %. Registra un ajuste si deseas forzar la venta.', stock_actual, abs(new.cantidad);
+    end if;
+    nuevo_stock := stock_actual - abs(new.cantidad);
+  else
+    nuevo_stock := stock_actual + new.cantidad;
+    if nuevo_stock < 0 then
+      raise exception 'El ajuste dejaría el stock en negativo (resultado: %).', nuevo_stock;
+    end if;
+  end if;
+
+  update productos set stock = nuevo_stock where id = new.producto_id;
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_movimientos_stock on movimientos_inventario;
+create trigger trg_movimientos_stock
+  after insert on movimientos_inventario
+  for each row
+  execute function fn_movimientos_aplicar_stock();
+
+alter table configuracion enable row level security;
+alter table productos enable row level security;
+alter table movimientos_inventario enable row level security;
+alter table pedidos enable row level security;
+alter table detalle_pedidos enable row level security;
+alter table gastos enable row level security;
+
+drop policy if exists "acceso_total_configuracion" on configuracion;
+create policy "acceso_total_configuracion" on configuracion for all using (true) with check (true);
+drop policy if exists "acceso_total_productos" on productos;
+create policy "acceso_total_productos" on productos for all using (true) with check (true);
+drop policy if exists "acceso_total_movimientos" on movimientos_inventario;
+create policy "acceso_total_movimientos" on movimientos_inventario for all using (true) with check (true);
+drop policy if exists "acceso_total_pedidos" on pedidos;
+create policy "acceso_total_pedidos" on pedidos for all using (true) with check (true);
+drop policy if exists "acceso_total_detalle_pedidos" on detalle_pedidos;
+create policy "acceso_total_detalle_pedidos" on detalle_pedidos for all using (true) with check (true);
+drop policy if exists "acceso_total_gastos" on gastos;
+create policy "acceso_total_gastos" on gastos for all using (true) with check (true);
+
+insert into configuracion (capital_inicial, margen_objetivo)
+select 5000000, 30
+where not exists (select 1 from configuracion);
+`;
+
+  function appData(){
+    return {
+      view: 'resumen',
+      navOpen: false,
+      modules: [
+        {id:'resumen', label:'Resumen'},
+        {id:'producto', label:'1 · Calculadora de producto'},
+        {id:'pedido-costos', label:'2 · Costos del pedido'},
+        {id:'precio', label:'3 · Simulador de precio'},
+        {id:'equilibrio', label:'4 · Punto de equilibrio'},
+        {id:'capital', label:'5 · Capital inicial'},
+        {id:'inventario', label:'6 · Inventario'},
+        {id:'simulador-pedido', label:'7 · Simulador de pedido'},
+        {id:'aprender', label:'8 · Aprender'},
+        {id:'escenarios', label:'9 · Escenarios'},
+      ],
+
+      fmtCOP, fmtPct, safeDiv, SQL_SCRIPT,
+      sqlCopiado:false,
+
+      // connection
+      sb: null,
+      sbUrl:'', sbKey:'', connected:false, connecting:false, connError:'',
+      showConnPanel:false,
+
+      // db-backed data
+      productos: [], gastos: [], pedidos: [], configuracion: null,
+
+      // module states
+      p1: {nombre:'', presentacion:'750 ml', costo:0, precio:0, cantidad:1},
+      p2: {costo:0, precio:0, cantidad:1, empaque:0, detalle:0, comisionModo:'valor', comisionValor:0, subsidio:0, otros:0},
+      p3: {modo:'margen', costo:0, margenObjetivo:30, precioManual:0},
+      p4: {gastosFijos:0, contribucionPromedio:0, ticketPromedio:0},
+      p5: {capital:5000000, inventario:0, empaques:0, publicidad:0, domicilios:0, herramientas:0, reserva:0, otros:0},
+      capitalCategorias: [
+        {key:'inventario', label:'Inventario', color:'var(--gold)'},
+        {key:'empaques', label:'Empaques', color:'var(--violet)'},
+        {key:'publicidad', label:'Publicidad', color:'#5cc8ff'},
+        {key:'domicilios', label:'Domicilios / operación', color:'#ff9f5c'},
+        {key:'herramientas', label:'Herramientas / software', color:'#c78bff'},
+        {key:'reserva', label:'Reserva de efectivo', color:'var(--good)'},
+        {key:'otros', label:'Otros', color:'var(--text-faint)'},
+      ],
+
+      invForm: {id:null, nombre:'', presentacion:'750 ml', categoria:'', costo:0, precio:0, stock:0},
+      invFormOpen:false,
+      movForm: {productoId:null, tipo:'entrada', cantidad:1, obs:''},
+      movFormOpen:false,
+      movFormProductoNombre:'',
+      movFormProductoId:null,
+
+      gastoForm: {concepto:'', categoria:'', valor:0, tipo:'fijo'},
+
+      p7: {items:[], empaque:0, detalle:0, comisionModo:'valor', comisionValor:0, subsidio:0, otros:0, observaciones:''},
+      p7NewItem: {productoId:'', cantidad:1, nombreManual:'', costoManual:0, precioManual:0},
+      guardandoPedido:false, pedidoGuardadoMsg:'', pedidoErrorMsg:'',
+
+      esc: {
+        conservador:{pedidos:40, ticket:60000, margenPct:20, gastosFijos:1200000},
+        normal:{pedidos:70, ticket:65000, margenPct:22, gastosFijos:1200000},
+        crecimiento:{pedidos:110, ticket:70000, margenPct:24, gastosFijos:1400000},
+      },
+
+      calc: { contribucionUltimaSimulacion:0, pedidosEquilibrio:0 },
+
+      conceptos: [
+        {q:'¿Qué es margen?', a:'El margen es tu utilidad expresada como porcentaje del precio de venta. Te dice qué parte de cada peso que paga el cliente termina siendo ganancia.', ex:'Si vendes una botella a $70.000 con una utilidad de $20.000, tu margen es 28,57 % — casi el 29 % de esa venta es ganancia.'},
+        {q:'¿Qué es markup?', a:'El markup es tu utilidad expresada como porcentaje del costo. Te dice cuánto le "subiste" al costo para llegar al precio.', ex:'Si compraste esa misma botella en $50.000 y la utilidad es $20.000, el markup es 40 % — le subiste 40 % al costo.'},
+        {q:'¿Qué es utilidad bruta?', a:'Es simplemente precio de venta menos costo del producto. Es un buen primer número, pero todavía no cuenta empaques, domicilios ni comisiones.', ex:'Precio $70.000 − costo $50.000 = utilidad bruta $20.000 por botella.'},
+        {q:'¿Qué es costo variable?', a:'Es un costo que solo existe porque hiciste esa venta: empaque, el detalle que regalas, la comisión del medio de pago, el domicilio que subsidias.', ex:'Cada pedido de Distrito Zero trae consigo $2.000 de empaque y $2.000 de comisión — si no vendes, no los pagas.'},
+        {q:'¿Qué es gasto fijo?', a:'Es un costo que pagas exista o no exista una venta ese mes: arriendo de bodega, un software, un sueldo fijo.', ex:'Así vendas 5 o 50 pedidos en el mes, el arriendo de la bodega de Distrito Zero cuesta lo mismo.'},
+        {q:'¿Qué es punto de equilibrio?', a:'Es la cantidad de pedidos (o de ventas) que necesitas para que la contribución total cubra exactamente tus gastos fijos. Antes de ese punto, pierdes; después, ganas.', ex:'Si tus gastos fijos son $1.200.000 y cada pedido contribuye $30.000, necesitas 40 pedidos al mes para llegar a cero.'},
+        {q:'¿Por qué vender más no siempre significa ganar más?', a:'Porque cada venta también trae costos variables. Si tu contribución por pedido es muy baja (o negativa), vender más solo multiplica la pérdida, no la ganancia.', ex:'Si el costo de entregar un pedido de Distrito Zero supera lo que ese pedido contribuye, 100 pedidos así generan más pérdida que 10.'},
+      ],
+
+      // ---------- lifecycle ----------
+      init(){
+        try {
+          const savedUrl = localStorage.getItem('dz_sb_url');
+          const savedKey = localStorage.getItem('dz_sb_key');
+          if (savedUrl && savedKey) {
+            this.sbUrl = savedUrl; this.sbKey = savedKey;
+            this.conectar(true);
+          }
+        } catch(e) {}
+      },
+
+      // ---------- supabase connection ----------
+      async conectar(silent){
+        this.connError = '';
+        if (!this.sbUrl || !this.sbKey) { this.connError = 'Ingresa la URL y la llave.'; return; }
+        this.connecting = true;
+        try {
+          const client = window.supabase.createClient(this.sbUrl, this.sbKey);
+          const { error } = await client.from('configuracion').select('id').limit(1);
+          if (error) throw error;
+          this.sb = client;
+          this.connected = true;
+          try { localStorage.setItem('dz_sb_url', this.sbUrl); localStorage.setItem('dz_sb_key', this.sbKey); } catch(e) {}
+          await this.cargarTodo();
+          if (!silent) this.showConnPanel = false;
+        } catch(err) {
+          this.connected = false; this.sb = null;
+          this.connError = 'No se pudo conectar. Verifica la URL, la llave y que hayas ejecutado el script SQL. (' + (err.message || 'error desconocido') + ')';
+        } finally {
+          this.connecting = false;
+        }
+      },
+      desconectar(){
+        this.sb = null; this.connected = false;
+        try { localStorage.removeItem('dz_sb_url'); localStorage.removeItem('dz_sb_key'); } catch(e) {}
+        this.sbUrl=''; this.sbKey='';
+        this.productos = []; this.gastos = []; this.pedidos = []; this.configuracion = null;
+      },
+      copiarSQL(){
+        try {
+          navigator.clipboard.writeText(this.SQL_SCRIPT);
+          this.sqlCopiado = true;
+          setTimeout(() => this.sqlCopiado = false, 2000);
+        } catch(e) {}
+      },
+
+      async cargarTodo(){
+        if (!this.sb) return;
+        const [prod, gas, ped, conf] = await Promise.all([
+          this.sb.from('productos').select('*').order('nombre'),
+          this.sb.from('gastos').select('*').order('fecha', {ascending:false}),
+          this.sb.from('pedidos').select('*').order('fecha', {ascending:false}).limit(50),
+          this.sb.from('configuracion').select('*').limit(1),
+        ]);
+        this.productos = prod.data || [];
+        this.gastos = gas.data || [];
+        this.pedidos = ped.data || [];
+        if (conf.data && conf.data.length) {
+          this.configuracion = conf.data[0];
+          this.p5.capital = toNum(this.configuracion.capital_inicial) || this.p5.capital;
+          const ov = this.configuracion.otros_valores || {};
+          if (ov.asignaciones) Object.assign(this.p5, ov.asignaciones);
+        }
+      },
+
+      // ---------- módulo 1 ----------
+      get p1UtilidadBruta(){ return toNum(this.p1.precio) - toNum(this.p1.costo); },
+      get p1MargenPct(){ return this.p1.precio > 0 ? safeDiv(this.p1UtilidadBruta, this.p1.precio) * 100 : 0; },
+      get p1MarkupPct(){ return this.p1.costo > 0 ? safeDiv(this.p1UtilidadBruta, this.p1.costo) * 100 : 0; },
+      get p1Inversion(){ return toNum(this.p1.costo) * toNum(this.p1.cantidad); },
+      get p1UtilidadPotencial(){ return this.p1UtilidadBruta * toNum(this.p1.cantidad); },
+      async guardarProductoDesdeP1(){
+        if (!this.sb) return;
+        const { data, error } = await this.sb.from('productos').insert({
+          nombre: this.p1.nombre, presentacion: this.p1.presentacion,
+          costo_compra: toNum(this.p1.costo), precio_venta: toNum(this.p1.precio), stock: 0,
+        }).select().single();
+        if (error) { alert('No se pudo guardar: ' + error.message); return; }
+        if (toNum(this.p1.cantidad) > 0) {
+          await this.sb.from('movimientos_inventario').insert({
+            producto_id: data.id, tipo_movimiento: 'entrada', cantidad: toNum(this.p1.cantidad),
+            costo_unitario: toNum(this.p1.costo), observaciones: 'Carga inicial desde Calculadora de producto',
+          });
+        }
+        await this.cargarTodo();
+        this.p1 = {nombre:'', presentacion:'750 ml', costo:0, precio:0, cantidad:1};
+      },
+
+      // ---------- módulo 2 ----------
+      get p2UtilidadBruta(){ return (toNum(this.p2.precio) - toNum(this.p2.costo)) * toNum(this.p2.cantidad); },
+      get p2VentaTotal(){ return toNum(this.p2.precio) * toNum(this.p2.cantidad); },
+      get p2ComisionMonto(){
+        return this.p2.comisionModo === 'pct' ? this.p2VentaTotal * (toNum(this.p2.comisionValor)/100) : toNum(this.p2.comisionValor);
+      },
+      get p2CostosVariables(){ return toNum(this.p2.empaque) + toNum(this.p2.detalle) + toNum(this.p2.subsidio) + toNum(this.p2.otros) + this.p2ComisionMonto; },
+      get p2Contribucion(){ return this.p2UtilidadBruta - this.p2CostosVariables; },
+
+      // ---------- módulo 3 ----------
+      get p3PrecioSugerido(){
+        const m = toNum(this.p3.margenObjetivo) / 100;
+        if (m >= 1 || m < 0) return 0;
+        return safeDiv(toNum(this.p3.costo), (1 - m));
+      },
+      get p3MargenDesdeManual(){
+        return this.p3.precioManual > 0 ? safeDiv(toNum(this.p3.precioManual) - toNum(this.p3.costo), this.p3.precioManual) * 100 : 0;
+      },
+      get p3MarkupDesdeManual(){
+        return this.p3.costo > 0 ? safeDiv(toNum(this.p3.precioManual) - toNum(this.p3.costo), this.p3.costo) * 100 : 0;
+      },
+
+      // ---------- módulo 4 ----------
+      get gastosFijosRegistrados(){ return this.gastos.filter(g => g.tipo === 'fijo').reduce((s,g) => s + toNum(g.valor), 0); },
+      get p4PedidosEquilibrio(){ return this.p4.contribucionPromedio > 0 ? safeDiv(toNum(this.p4.gastosFijos), this.p4.contribucionPromedio) : 0; },
+      async agregarGasto(){
+        if (!this.sb || !this.gastoForm.concepto || this.gastoForm.valor <= 0) return;
+        const { error } = await this.sb.from('gastos').insert({
+          concepto: this.gastoForm.concepto, categoria: this.gastoForm.categoria || null,
+          valor: toNum(this.gastoForm.valor), tipo: this.gastoForm.tipo,
+        });
+        if (error) { alert('No se pudo guardar: ' + error.message); return; }
+        this.gastoForm = {concepto:'', categoria:'', valor:0, tipo:'fijo'};
+        await this.cargarTodo();
+      },
+      async eliminarGasto(id){
+        if (!this.sb || !confirm('¿Eliminar este gasto?')) return;
+        await this.sb.from('gastos').delete().eq('id', id);
+        await this.cargarTodo();
+      },
+
+      // ---------- módulo 5 ----------
+      get capitalAsignadoTotal(){
+        return this.capitalCategorias.reduce((s,c) => s + toNum(this.p5[c.key]), 0);
+      },
+      get capitalDisponible(){ return toNum(this.p5.capital) - this.capitalAsignadoTotal; },
+      async guardarCapital(){
+        if (!this.sb) return;
+        const asignaciones = {};
+        this.capitalCategorias.forEach(c => asignaciones[c.key] = toNum(this.p5[c.key]));
+        const payload = { capital_inicial: toNum(this.p5.capital), otros_valores: { ...(this.configuracion?.otros_valores||{}), asignaciones } };
+        if (this.configuracion) {
+          await this.sb.from('configuracion').update(payload).eq('id', this.configuracion.id);
+        } else {
+          await this.sb.from('configuracion').insert(payload);
+        }
+        await this.cargarTodo();
+      },
+
+      // ---------- módulo 6 ----------
+      margenDe(p){ return p.precio_venta > 0 ? safeDiv(toNum(p.precio_venta) - toNum(p.costo_compra), p.precio_venta) * 100 : 0; },
+      get inventarioValorCosto(){ return this.productos.reduce((s,p) => s + toNum(p.costo_compra)*toNum(p.stock), 0); },
+      get inventarioValorVenta(){ return this.productos.reduce((s,p) => s + toNum(p.precio_venta)*toNum(p.stock), 0); },
+      get inventarioUnidades(){ return this.productos.reduce((s,p) => s + toNum(p.stock), 0); },
+      get inventarioUtilidadPotencial(){ return this.productos.reduce((s,p) => s + (toNum(p.precio_venta)-toNum(p.costo_compra))*toNum(p.stock), 0); },
+      get productoMayorMargen(){
+        if (!this.productos.length) return null;
+        return this.productos.reduce((best,p) => this.margenDe(p) > (best ? this.margenDe(best) : -Infinity) ? p : best, null);
+      },
+      get margenPromedioInventario(){
+        if (!this.productos.length) return 0;
+        return this.productos.reduce((s,p) => s + this.margenDe(p), 0) / this.productos.length;
+      },
+      abrirNuevoProducto(){ this.invForm = {id:null, nombre:'', presentacion:'750 ml', categoria:'', costo:0, precio:0, stock:0}; this.invFormOpen = true; },
+      editarProducto(p){ this.invForm = {id:p.id, nombre:p.nombre, presentacion:p.presentacion, categoria:p.categoria||'', costo:p.costo_compra, precio:p.precio_venta, stock:p.stock}; this.invFormOpen = true; },
+      async guardarProducto(){
+        if (!this.sb) return;
+        const payload = { nombre:this.invForm.nombre, presentacion:this.invForm.presentacion, categoria:this.invForm.categoria||null, costo_compra:toNum(this.invForm.costo), precio_venta:toNum(this.invForm.precio) };
+        if (this.invForm.id) {
+          await this.sb.from('productos').update(payload).eq('id', this.invForm.id);
+        } else {
+          const { data, error } = await this.sb.from('productos').insert({ ...payload, stock:0 }).select().single();
+          if (error) { alert('No se pudo guardar: ' + error.message); return; }
+          if (toNum(this.invForm.stock) > 0) {
+            await this.sb.from('movimientos_inventario').insert({ producto_id:data.id, tipo_movimiento:'entrada', cantidad:toNum(this.invForm.stock), costo_unitario:toNum(this.invForm.costo), observaciones:'Stock inicial' });
+          }
+        }
+        this.invFormOpen = false;
+        await this.cargarTodo();
+      },
+      async eliminarProducto(p){
+        if (!this.sb || !confirm(`¿Eliminar "${p.nombre}"? También se borrará su historial de movimientos.`)) return;
+        await this.sb.from('productos').delete().eq('id', p.id);
+        await this.cargarTodo();
+      },
+      abrirMovimiento(p){ this.movFormProductoId = p.id; this.movFormProductoNombre = p.nombre; this.movForm = {tipo:'entrada', cantidad:1, obs:''}; this.movFormOpen = true; },
+      async registrarMovimiento(){
+        if (!this.sb || !this.movFormProductoId) return;
+        const { error } = await this.sb.from('movimientos_inventario').insert({
+          producto_id: this.movFormProductoId, tipo_movimiento: this.movForm.tipo,
+          cantidad: toNum(this.movForm.cantidad), observaciones: this.movForm.obs || null,
+        });
+        if (error) { alert(error.message); return; }
+        this.movFormOpen = false;
+        await this.cargarTodo();
+      },
+
+      // ---------- módulo 7 ----------
+      agregarItemPedido(){
+        const prod = this.productos.find(p => p.id === this.p7NewItem.productoId);
+        if (!prod || toNum(this.p7NewItem.cantidad) <= 0) return;
+        this.p7.items.push({ productoId: prod.id, nombre: `${prod.nombre} — ${prod.presentacion}`, cantidad: toNum(this.p7NewItem.cantidad), precioUnit: toNum(prod.precio_venta), costoUnit: toNum(prod.costo_compra) });
+        this.p7NewItem = {productoId:'', cantidad:1, nombreManual:'', costoManual:0, precioManual:0};
+      },
+      agregarItemPedidoManual(){
+        if (!this.p7NewItem.nombreManual || toNum(this.p7NewItem.cantidad) <= 0) return;
+        this.p7.items.push({ productoId:null, nombre:this.p7NewItem.nombreManual, cantidad:toNum(this.p7NewItem.cantidad), precioUnit:toNum(this.p7NewItem.precioManual), costoUnit:toNum(this.p7NewItem.costoManual) });
+        this.p7NewItem = {productoId:'', cantidad:1, nombreManual:'', costoManual:0, precioManual:0};
+      },
+      get p7VentaTotal(){ return this.p7.items.reduce((s,it) => s + it.cantidad*it.precioUnit, 0); },
+      get p7CostoProductos(){ return this.p7.items.reduce((s,it) => s + it.cantidad*it.costoUnit, 0); },
+      get p7UtilidadBruta(){ return this.p7VentaTotal - this.p7CostoProductos; },
+      get p7ComisionMonto(){ return this.p7.comisionModo === 'pct' ? this.p7VentaTotal * (toNum(this.p7.comisionValor)/100) : toNum(this.p7.comisionValor); },
+      get p7CostosVariables(){ return toNum(this.p7.empaque)+toNum(this.p7.detalle)+toNum(this.p7.subsidio)+toNum(this.p7.otros)+this.p7ComisionMonto; },
+      get p7Contribucion(){ return this.p7UtilidadBruta - this.p7CostosVariables; },
+      get p7MargenContribucion(){ return this.p7VentaTotal > 0 ? safeDiv(this.p7Contribucion, this.p7VentaTotal)*100 : 0; },
+      async guardarPedido(){
+        if (!this.sb || !this.p7.items.length) return;
+        this.pedidoErrorMsg = ''; this.pedidoGuardadoMsg = '';
+        const sinStock = this.p7.items.filter(it => it.productoId).find(it => {
+          const prod = this.productos.find(p => p.id === it.productoId);
+          return prod && toNum(prod.stock) < it.cantidad;
+        });
+        if (sinStock && !confirm('Uno o más productos no tienen stock suficiente. ¿Deseas continuar de todas formas? (el sistema no permite dejar el stock en negativo)')) return;
+        this.guardandoPedido = true;
+        try {
+          const { data: pedido, error: perr } = await this.sb.from('pedidos').insert({
+            subtotal: this.p7VentaTotal, domicilio: toNum(this.p7.subsidio), descuento: 0,
+            total: this.p7VentaTotal, costo_productos: this.p7CostoProductos,
+            costos_variables: this.p7CostosVariables, contribucion: this.p7Contribucion,
+            observaciones: this.p7.observaciones || null,
+          }).select().single();
+          if (perr) throw perr;
+
+          for (const it of this.p7.items) {
+            if (it.productoId) {
+              await this.sb.from('detalle_pedidos').insert({ pedido_id: pedido.id, producto_id: it.productoId, cantidad: it.cantidad, precio_unitario: it.precioUnit, costo_unitario: it.costoUnit });
+              const { error: merr } = await this.sb.from('movimientos_inventario').insert({ producto_id: it.productoId, tipo_movimiento: 'venta', cantidad: it.cantidad, costo_unitario: it.costoUnit, observaciones: `Venta pedido ${pedido.id}` });
+              if (merr) throw merr;
+            }
+          }
+          this.pedidoGuardadoMsg = 'Pedido registrado y stock actualizado correctamente.';
+          this.p7 = {items:[], empaque:0, detalle:0, comisionModo:'valor', comisionValor:0, subsidio:0, otros:0, observaciones:''};
+          await this.cargarTodo();
+        } catch(err) {
+          this.pedidoErrorMsg = 'No se pudo registrar el pedido: ' + (err.message || 'error desconocido');
+        } finally {
+          this.guardandoPedido = false;
+          setTimeout(() => { this.pedidoGuardadoMsg=''; this.pedidoErrorMsg=''; }, 6000);
+        }
+      },
+
+      // ---------- módulo 9 ----------
+      escenarioResultado(key){
+        const e = this.esc[key];
+        const ventas = toNum(e.pedidos) * toNum(e.ticket);
+        const contribucion = ventas * (toNum(e.margenPct)/100);
+        const costosVariables = ventas - contribucion;
+        const resultado = contribucion - toNum(e.gastosFijos);
+        return { ventas, costosVariables, contribucion, resultado };
+      },
+
+      // ---------- módulo 10 ----------
+      get contribucionPromedioPedido(){
+        if (this.pedidos.length) return this.pedidos.reduce((s,p) => s + toNum(p.contribucion), 0) / this.pedidos.length;
+        return this.calc.contribucionUltimaSimulacion || this.p7Contribucion || 0;
+      },
+    };
+  }
+</script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.14.1/cdn.min.js"></script>
+
+</body>
+</html>
